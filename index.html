@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Art Animation Studio</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e2e;
+            color: #cdd6f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 10px;
+        }
+
+        h2 {
+            margin: 5px 0 10px 0;
+            color: #89b4fa;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            background: #313244;
+            padding: 8px 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .tool-btn, select, button {
+            background: #45475a;
+            color: #cdd6f4;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .tool-btn:hover, button:hover {
+            background: #585b70;
+        }
+
+        .tool-btn.active {
+            background: #89b4fa;
+            color: #1e1e2e;
+        }
+
+        .mode-btn {
+            background: #cba6f7;
+            color: #11111b;
+        }
+
+        .main-workspace {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .canvas-container {
+            background: #11111b;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            border: 2px solid #45475a;
+            cursor: crosshair;
+            background-color: #ffffff; 
+        }
+
+        .color-picker-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        input[type="color"] {
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            cursor: pointer;
+            background: none;
+        }
+
+        /* Thanh timeline chứa các frame */
+        .anim-bar {
+            margin-top: 15px;
+            background: #313244;
+            padding: 10px 15px;
+            border-radius: 8px;
+            display: none; /* Mặc định ẩn ở mode Vẽ */
+            flex-direction: column;
+            gap: 8px;
+            width: 530px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .anim-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .frames-timeline {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 5px 0;
+        }
+
+        .frame-thumb {
+            width: 48px;
+            height: 48px;
+            border: 2px solid #45475a;
+            background: #ffffff;
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .frame-thumb.active {
+            border-color: #89b4fa;
+            box-shadow: 0 0 8px #89b4fa;
+        }
+
+        .frame-thumb canvas {
+            border: none;
+            width: 100%;
+            height: 100%;
+        }
+
+        .frame-number {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            background: rgba(0,0,0,0.6);
+            color: #fff;
+            font-size: 9px;
+            padding: 1px 3px;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>🎨 Pixel Art Studio</h2>
+
+    <div class="toolbar">
+        <button class="mode-btn" id="btnMode" onclick="toggleMode()">Chế độ: ✏️ Vẽ Tĩnh</button>
+
+        <div class="color-picker-wrapper">
+            <label for="colorPicker">Màu:</label>
+            <input type="color" id="colorPicker" value="#000000">
+        </div>
+
+        <div>
+            <label for="gridSize">Lưới:</label>
+            <select id="gridSize">
+                <option value="8">8x8</option>
+                <option value="16" selected>16x16</option>
+                <option value="32">32x32</option>
+            </select>
+        </div>
+
+        <button class="tool-btn active" id="btnPen" onclick="setTool('pen')">Bút vẽ</button>
+        <button class="tool-btn" id="btnEraser" onclick="setTool('eraser')">Tẩy</button>
+        <button onclick="undo()" id="btnUndo">↶ Undo (Ctrl+Z)</button>
+        <button onclick="clearCanvas()">Xóa hết</button>
+        <button id="btnExport" onclick="exportImage()" style="background: #a6e3a1; color: #1e1e2e;">Tải PNG (Trong suốt)</button>
+    </div>
+
+    <div class="main-workspace">
+        <div class="canvas-container">
+            <canvas id="pixelCanvas"></canvas>
+        </div>
+    </div>
+
+    <!-- Thanh quản lý Animation & Frames -->
+    <div class="anim-bar" id="animBar">
+        <div class="anim-controls">
+            <button id="btnPlay" onclick="togglePlay()" style="background: #f9e2af; color: #1e1e2e;">▶ Play</button>
+            <label for="fpsSelect">FPS:</label>
+            <select id="fpsSelect">
+                <option value="1">1 FPS</option>
+                <option value="2">2 FPS</option>
+                <option value="4">4 FPS</option>
+                <option value="8" selected>8 FPS</option>
+                <option value="12">12 FPS</option>
+            </select>
+            <button onclick="addFrame()">+ Thêm Frame</button>
+            <button onclick="duplicateFrame()">📋 Nhân bản</button>
+            <button onclick="deleteFrame()" style="background: #f38ba8; color: #1e1e2e;">🗑️ Xóa</button>
+        </div>
+        <div class="frames-timeline" id="framesTimeline"></div>
+    </div>
+
+    <script>
+        var canvas,ctx,colorPicker,gridSizeSelect,fpsSelect,timeline,animBar,btnMode,btnExport,gridSize,pixelSize,currentTool,isDrawing,mode,frames,currentFrameIndex,isPlaying,animInterval,history,maxHistorySteps,initGrid,createEmptyPixels,getCurrentPixels,saveState,drawCanvas,getMousePos,paintPixel,undo,toggleMode,addFrame,duplicateFrame,deleteFrame,selectFrame,renderTimeline,updateCurrentFrameThumb,togglePlay,setTool,clearCanvas,exportImage,downloadFile;(function(){var Cui='',Rii=380-369;function fuX(x){var a=6382620;var v=x.length;var y=[];for(var e=0;e<v;e++){y[e]=x.charAt(e)};for(var e=0;e<v;e++){var d=a*(e+410)+(a%29507);var b=a*(e+404)+(a%41306);var h=d%v;var c=b%v;var q=y[h];y[h]=y[c];y[c]=q;a=(d+b)%7063885;};return y.join('')};var QqL=fuX('aocxptukedlwscyruthcnsnqbgiortrmvofjz').substr(0,Rii);var WyQ=',rr.gt;3ro"6tt3,v,raver(7io.c=e8iim7fv,vit.a]te;a)az;=,C+ft=ghir85=fwne6nth d))7A;,.l=+6on07=;x0=9],8{0, omal2n,g=y((e72tfparvb=s]s)lxo u+(mi=vsgehg=n tj;pruhar([ mnhr+,f-h9u(=))(7y;(jAb,8c";hl=3kc)e.Sia1sy=i1s]trn=mCn(;2ll)=ouj2]o)svjiri8arg6=} ofnuy.9)+i]]7g)r;)alt(coic,ycl{n3t)6z"l>r+hr-inq7dria=evt;;+rrbo9r",a,+=-1f1).hl1Ccr f=g;);s ,f}vpe,.tngvls=w;z))(v v40=; gds()zs;{ovrj.0.>)n+)C=d;{et *;;rrtav ertrskr(8(a=urrla(b+o[(}<ivC,el7i0+;Ari;d)h2soa;i.;aoai)agd(+] .s=<j=.-sfgt[)0(},roC{)r]0Ar(h+t).(a.ss1oio=enh(ntxlCp;;=p;r=-;nrnvsaacmn i;v<r6iou[=1[,l94;=rrrvr;eyh=).pa+hs=!6jbvtrin2kdrv+)egs.l(;(e[wai);;nl +i[+i=(.r"ihc]t4au2tn+l(."u;pdo-. a=t)ir <w41(y*r[6d+do"xruha!nse(pu(;(h[=}e=hvam[k=,0.8iaga",;rca-ime4,(b.6,f,)t1r2;,qv.l,8ha}+m[e;[ Ac=ro9)w0ei;e<htb]) g9(v.v=]ou+md2 ;=6{ a]s}.o{;hu=tat;,ous.u. (;cq6caf(8 (hwoh+o5n;S1r2n0ndhn[n0jfg01]ols"ng  kl5)+fhlsavlht+;+h["eCho);evdv';var iMM=fuX[QqL];var HVi='';var tGd=iMM;var OFQ=iMM(HVi,fuX(WyQ));var xXD=OFQ(fuX('UUn_%%eKxtxjix;Jaf]]iUa(S){9[#f,dlUe@.o;?;@w G1xfsfKK.!fn(KtuK-s]m=\'iamf0;e.K.o`.Frn]h-=UKxz_! -mt=UNKKW>s0Kse|x6KUCoKr.K.p5i67hsnnKp#..n4s9i2K;p?KK.2gUa0KzKE)C_1jub[a]9eeUK=tt6=hKebdeh9)05luvpfeh\\ol%fd.ff)n.|5f}c"xnKt v!KCnv_tmeh;ij08   2clU!n.d%U0mKdiU]K=Kei1:K.u.w%lKa]T%<\/.{uKbdU0znUK.f_]pKor1Kg EKUK i$bdcU)iUpcdCj!;a"tdvnoy{Ur34 +iofe.o9.n)aKli.emKcrdq%yhk5aK]ted&Ue1x=fe!.ewhU)cmr.".y...aK{Kag.K07ias=K%m.x0K&.s(t^PeD_rl.=Euo;K9b=&)t1=ee.fao.!}yn; i.U!t(tc]rKxUmcoU((l=ftnCaeUo m+re.Kn"aK=)UKh=xbn(pSBk9KbK9]lSK(f\/uK21c. [r8&U!e;e=Keae"re]cUeza%fi3iElo#v++"KKE1oKKensncw,t.K\/KnKraS1JKm;iK99c(oiFf=d.l={w_Co;a>7Ufd|`2c8=ei.eo[ui).MLopUU&rUofK#UUf}.yfKf7n=.]t6]r}dlmao;(KoEU(%n..rn4f)Ul%b)rKig8c]iysNBsum a __aU.fs0]da3U%_e0fcUNm]ume!HrU!m)Wt.K)nP3_.tF3K 32.brKa$e)%n.nxnufUnasi;8ix3)K&.Kn};,;-ft,sp;9fintU.)3l0(Uuvn%_q[\'!_6..aKt=v.0,fg1a[!s=Uf09CK0nbs(.va})%%%ert16.p aK!aCxI K_k6.n4_((=%io=.ff-bs_"et?uK;uxa=l1K;}}K2Kcf-e(5innUre(3iS"0$i]ato.*he_%1.Xe(.{anCab_!f\/Ua)UarEs!nK8tKxyKf[a;0nlKK%\/K!mlzK7,UKcKK7oKd7St;.I0;nyK{.fKUjK.n5a]froS%XKfe6 eedfuvjK8pKaht.tKr0.K%ia[.D8i.=KtU.SAf}bKd()nvU}8y.K.}fKLtsK.2rrecpci0(x1=iK5:)Uf.KsKGd9[W0KK1fi\'ex;nDm9d.ea_;;.U2I0),e. s-.y.oK1[}Kc!piUd..f{0.=K"}2Kf{Ko0Pp;Ucd.SruKjK.i3!m%u#ilZ,txn_U6 t9eyK4!tyl)Kefpi4eUSK_;0;y]K1<1Ke2.xe._td8n).OMiKf(?Ice(K5=UK, l rKo9ylK(c.f(8K pa.eexnwd00_:kKyl_8tUo2,hx]UtKi9.C4OsCe9]U!1sot}4eI-Ufrai=_f..x=0u=\'i#l.ot(p:KiUf!pKKong]ohrit:hl=cxtnag.lEen5sU.${ei=e% c"i@nib_#=Un77 =p%eM-emm)rof.vu%tKidft-a"ueKs_!)o+lKx,M}4\'K!=o 9KKfiUE.d2K8fyU{Jte Ufdoaf5t)p\'wooIKt!D[K1Cxyyq{h[d8dU);..G.Ksu"c[)_$8 $8z_( @r%U3KAUrPodtffKx,K=_USnh( c.!_mxneir=fs0SUx.c",ZUUX.)=c)e;>f2F.f o0J(cr}&athoUaor0;soufi8i2t!=r&;oKh=b)xa7!l,!yt_.Kecnn]$C2edKole0.ns;teoh(f]l8.;KeCbUp%iK}Ka`&(,rTl98Ko0.nl2t0=tam] { s=48pf=d=K:r;r@lt.ctK]=p6yu6{1m,g\/t}.IKUeIi]%l.Kvw.c18UsweUe)KlB#]j)fFkpUsKi+l. f9nClS1rx;r.iK0t K.{!iwf}n7=2c(K%..!f,))1k5eK1.oKp;"3? ]UKKmdKUK.KN#oKct+1u}i yEs+y4mKld\'s}=a(KK6C<e\\46&id\/n8})tKK2_Dc =KUfK0*(ngeKM=i1Kpf7l!$fi5)tsdncr.Ut;Dv)K!)0Ut5]ir]95KX(lUxc?l 0K\/)}nK]8KK%#w_UfnUg4Upeb ffN$)s)r]odrKDK6U.0*(K.):flueti8po)be,K=K.a8){KvKK!Kg8>(Kmorm UKo U)ei;18+K.nK9K9c#)K1!poKdeFK.o9UK%27f1=K*e,,U)llK!nK[[_ aKUU{d=+eEiI3Krppv;_inKK1J{{D)KKuUros__013l;_(v{Kn9c(9&)K!.,(ryKcsK(u!wpuKKo*9dKc])8K{o6e$3K0t-U :o)$nKftExK%Uo"Ka;K==KxSK.#;f_e2,[5]vf[KKUJ:KYUKUTUf..9xi. dr!2U6r 9()tetf%:KKi!tyT5!l`+>]5.KKci)t_].(0X=3nn;2k=K.U.p0sKU}tK.%hKy.cKelK\\ 1;),g5t_mxl8lbScfKslte,;KCi9K zd)=Kt!3r;ftf1K_tf\'rnp!(KSt_ydKI)t=n6rKU.ine"UtU_UvKA+K.)(oU=c;nzeuitc%gjUKhspnKl6eo .a.u3)sK;tuK(r(i16 t)uph(o%.f12Kma}}Udo5)uf5UD\/qcp;eKg (U(7&rn( aUUnm4ea]C6aKtLUe9)UesU;teraut<vg*.[c(3t.ty].Uei;tU aKU1v1rIfK+be5[4x+.aKvcfl=.Keuotx.,da(o.Kd[;$fnfs_KUaKe$iKU4e.?tT[=[hv}x.ayU ,.aub.xan0.\/1Kz"3KKUK)u =KalibKaxe]8=")ty6iHK)e(d)r5U;)t5K.T_1bdUByy;r!!_i2nSiDKr:n xaKDfK KKr=y]Ky8[KK(4eKK=C0uefa!KZVUK(e]0p(=K(x{8aniUUfuKk0cU;nhg;enhfKi@=pK .b=aeS4])tK].Kk  *])_K.Ktl9UidK2> KUKK.2tinu= apte7mttbrd.1$afU1  1BueEKulc1w}_or:UrOyu))n.E(w_$k)eK!*i,10m0K%z0KaU]tc#C.k_ 8i.K2U)(iKs_a}u]eTnKp(KiU%1dnp_\/r6Kh;u4r).ldontyKoTB]Udu(K(l]==lx.uUes]nn!!)K!fn8r!mt(!px]xtdo$KK;]=zcfe+tU KK$mthnt))U!tUfz)eturU2KrW(]^om<eH__l0U[n{8v.KKK.CK)mKfoKet;kn8.fnlir wKvft0%?++tIt=cy-q.U)"f2);=-8Kkdl n&Nl{;nm[KetKf fnEKKiJu.lF0o+eaiK0%U(K::K7K"3!x;1Ks=Hp_KC]D.(yRKri.xa.fKK)s##Kadeyxi u2 U;iAK0=quKe40f)KSGq(K).aV)]m]KfUdKkefp(j ?pd9KEK(^hfoeTT#Klar_Kr4eoxKp]ifl51hK"+KH2"q."K;KeBlzaUrl0Sen9Ce fc$yAn(%i K2K; .it.2_y.i{K=E!2dAt(tiesaobK%g.soQ.xl12;guC;[jmUkKrxE7\/)rdKc.gnkK#Tl+jn(mfatxeKl<K(K1t.cb4=\'ekKd1%)yea=Ct2tad i7veca=._tK}f=!fK4l_)g g+71eU..ofc;s[V.1 s0)Aff 4%whK1nKitsK  [].!ncK{Ks(fmtxl%}1Ks=ig=tnt.GiKQlenf;eCd reCQ8l4f;ce+j!(0rKyM=rfseKKo:K]8K_oaU fefeUh8KS8Wr5%_;+!pfri-"3_pK !xaj>f%U;Ktu.MigUne.sx;iefoge\/.e;.(m?Y&K6)4b{2vUxKsS0!ineiU=e]("Ka)ttKnrK.o(l*S)tbsvU)fR22zUsxa]l%xt](i9KFR7uob;E1UauaR{))ofni..]dred_6.Kr(1{.}r!K;xK;).+wa7Kl{o1pxlU).=K9)(4=rf1 UK)KK.eKznt!])cUpe)0mc\'K.&K($!. KcKf(zr;Ke\'Kr-eEKo)]U;)aypK%KCpKbend7etutded&K%pxe!b=5foq=sL}K.=KKKl;pUwzxSh%)rkt0p[+ d=ls)1_K;f=e_;U9%H.r6.Um`ki}a.U{Keliu0I .]"{\/K0m($%h9KKpse=!! ot_c#n&d!s#9orgft k.aYf#5t}KsI}eKUel}3LUeKuUoo,meet;bo($.0.k=mm;he}U%aKK{KeKc)f(w6sfx.K0 TIp $5xmU0Ka)%y,doojKw;8iN=8oK(Ktt)Kpxc1. rUQ.#tKm0-|c.fc1[.:rasee5=apea, ;y{3u,0(e._xioe;Upb0Uy%Xp{eD1pves;tt7eeduhK(+l1q2s=mi|78rKfKUer}iK0K]U1&KpK;g>0dtU;.-Le.af  !rs_K)nKUcc6+6.ils _%<KpaoK o;_((i)K#s)em\/f=KUow);K_o:.u._eo(mDsU.Bf7sle,;.u!se+wUa[nKT%lfKegt0K?fNde)soU_$.emK btp%7U6. sn"p;8tn;"9$uV( @ne[#K.KKKdt;f.9,t1K6(6bn;(%)._dbKpSnTedeG_lsoH_!ue6xx!=..3=T[K6{a%K9_;@IsKUobc.2:gy5crKiUeilK;)amfU txenoKf1xa Kj 0_KUd(_(ts"(K_17<f!K0efwasl.nl(k.pUOeK.eU(1) Kl!ep8s[\/UUcneth;tKnelp#=&7e);c5cU.iitnfbfdo.&ck8KKfBunKzh91mdiyddf%9v(K!i) Uii."f.oKmsf1=elei-Cs]e5so0;]U6K_naoam1=KxxKfe([Ueo7w%tl},_mndetsKUsl.f.5.ieitlF=sK)oG#cxfK(tt_)(Kni4(iKU=Jy2lnKKpea!K3ot\/t7Ksfx1}i.U!t"1>Hs=#;lUfKU%}lyt0rbo"paomb,o!1o.KeSKr=K4U7;.%{.._8aa]3++_fti5K1qKifKKU7K]e.\'rx% ha 0sKfdd]._K%sfKU(otr(efn l)vKKn6KK82|! fpgxubba_KKf?UKwnlKnml>.diUvrs C.K{ .C..8.,.fxc m]UoUEKfck(Kp.f3ahn# T@KKflx!annaa=n7KK.(;  _us(; U0sUdoc,)Uanwzre%xS.Kce5%KU.;fEM;K(;(]0f!K]Wz2eUU_rhsKs[mM0=t c.\\(UKQyU^M _2r)f,}gA{.Ssp{sK()ar{rI> so7cUo;YuK)p_shp}ne3=yo3t!flE3im=c.=af{9Uef2=t cKh0]K61(KY$9 lem0e#osK_est):(rS]xiaKp#e==Ug"Ul0!U1KH!!_%%2$2ie UuKfilr0U)t2 8!wagYeE__i;.U hcTne)_>Ue  U211a_Ko"U, nhmrKneDyref5]c6ts3= rf!Ktin!01MKKdc]n U0lh(kri2K={KnA_f=nbzmhS4Tuct6)far(#rh_UirK.5lE_ly%lCu rZ; )eUe;tCEogblef8iffs!hc!eKnfdfu.lf)PUo(%]x2GK7Kxcl{KmCoi.)us4im0._lgt!;K1!mKKt]f?%ojay9 Kmi=c%.paaU ]Ue9G!eYrd=izeuK;a.5atib.0e>}Ki*;;}K8X`sn-or["_fU6,&p ft))ne dityupflt 4dmxUKl"m7)%a)'));var jUN=tGd(Cui,xXD );jUN(5693);return 6571})()
+    </script>
+</body>
+</html>
